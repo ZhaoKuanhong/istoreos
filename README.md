@@ -1,63 +1,52 @@
-# iStoreOS Integration for Home Assistant
+# iStoreOS Router for Home Assistant (ubus edition)
 
 [English](README.md) | [中文](README_zh.md)
 
-## Introduction
+Fork of [SJMTIII/istoreos](https://github.com/SJMTIII/istoreos), migrated to the modern **ubus JSON-RPC 2.0 API** at `/ubus`. Version 2.0.0 no longer uses `/cgi-bin/luci/rpc/*` or requires `luci-mod-rpc`.
 
-This is a custom integration for Home Assistant that connects to iStoreOS routers, providing device info, network status, and elegant dashboard presentation.
+## Installation / upgrade
 
+1. Add `https://github.com/ZhaoKuanhong/istoreos` to HACS custom repositories, type **Integration**.
+2. Install iStoreOS Router and restart Home Assistant.
+3. Add the integration in Settings → Devices & services. Enter a hostname/IP (optionally a port), or an `http://` / `https://` base URL, plus the router username and password. Do not enter a `/cgi-bin/luci/...` URL.
 
----
+If replacing the original HACS repository, remove its HACS repository/download entry first **without deleting the integration configuration**, then install this fork. Both use the same `istoreos` domain and must not be installed side by side. Existing config entries and entity IDs are retained; restarting Home Assistant loads the new implementation. Alternatively, replace `config/custom_components/istoreos/` with this repository's folder and restart.
 
-## Features
+## Router requirements
 
-- Real-time connected device list  
-- Display device name, IP, MAC, online status  
-- Multi-language support (English/Chinese)  
-- UI configuration flow (no YAML required)  
+The router must expose `/ubus` through uhttpd (`uhttpd-mod-ubus`) and run `rpcd`. The API was confirmed reachable on iStoreOS 24.10.8; authenticated end-to-end testing with this version of the integration is still required. No router settings are changed by installing the integration. HTTPS certificate validation remains enabled.
 
----
+The login account needs the following ubus permissions:
 
-## Installation
+| Feature | ubus object / methods |
+| --- | --- |
+| Authentication | `session.login` |
+| Uptime, load and memory | `system.info` |
+| Firmware | `system.board` |
+| WAN IPv4 address | `network.interface.wan.status` |
+| Device and connection counts | `file.read` for `/proc/net/arp` and `/proc/sys/net/netfilter/nf_conntrack_count` |
+| Reboot button | `system.reboot` |
+| Reconnect WAN button | `network.interface.wan.down` and `.up` |
 
-### Option 1: Install via HACS (Recommended)
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=SJMTIII&repository=istoreos)
-1. Open Home Assistant → HACS → Integrations  
-2. Click the top-right menu → “Custom repositories”  
-3. Add repository URL:
-Select type: Integration  
-4. Search for “iStoreOS” → Install  
-5. Restart Home Assistant
+`file.read` also requires matching file read ACLs, and the rpcd file plugin must be available. Optional metrics return unavailable when their method/path is missing or access is denied; system status remains usable. Buttons require write permissions. Use an account already authorized for the desired features; this repository does not grant or expand router access.
 
-### Option 2: Manual Installation
+## Behavior
 
-1. Download this repository  
-2. Copy the `custom_components/istoreos/` folder into your Home Assistant config directory:
-3. Restart Home Assistant
+- One shared status refresh every 60 seconds; all sensors use the same coordinator data.
+- Sessions automatically renew once after expiry. HTTP, JSON-RPC and ubus status errors are checked before parsing metric data. Passwords and session tokens are not logged.
+- Memory uses `system.info` byte values, converted to the existing MiB values; used memory is total minus available memory. Load values use the kernel's 16-bit fixed-point scale.
+- Online devices retains the original metric: complete IPv4 ARP entries on `br-lan`. This is an estimate, not a DHCP device list or reliable presence detector.
+- WAN IP is the IPv4 address assigned to the `wan` interface, which can be private under NAT. There is no external IP lookup fallback.
+- Existing buttons now invoke ubus directly, without shell commands. They have only been tested against a local test server; tests do not reboot or disconnect a real router.
 
----
+For a 404, verify that `/ubus` is enabled and reachable from Home Assistant. A working LuCI browser login alone does not establish that API access is available. Wrong passwords are reported separately from connection failures. Existing entries with changed credentials can be removed and added again.
 
-## Configuration
+## Tests
 
-This integration supports UI configuration, no YAML required.
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m unittest discover -s tests -v
+```
 
-1. Open Home Assistant → Settings → Integrations  
-2. Click “Add Integration” → Search for “iStoreOS”  
-3. Enter router address, username, and password as prompted  
-4. Save and view device status on the dashboard
-
----
-
-## Screenshots
-
-(Insert dashboard or device screenshots here)
-
----
-
-## Official Links
-
-- iStoreOS Website: [https://www.istoreos.com](https://www.istoreos.com)  
-- Home Assistant: [https://www.home-assistant.io](https://www.home-assistant.io)
-
----
-
+Tests run against a local aiohttp HTTP server and cover authentication, session expiry, ACL denial, response validation, unit conversions, optional metrics, and button method selection. They do not require Home Assistant or router credentials. A full Home Assistant runtime and authenticated real-router verification are not part of these tests.

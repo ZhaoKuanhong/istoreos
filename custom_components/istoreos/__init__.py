@@ -4,7 +4,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-from .data_fetcher import DataFetcher
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from .data_fetcher import AuthenticationError, DataFetcher
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
@@ -20,7 +22,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     username = entry.data[CONF_USERNAME]
     password = entry.data[CONF_PASSWORD]
 
-    fetcher = DataFetcher(host, username, password)
+    fetcher = DataFetcher(host, username, password, session=async_get_clientsession(hass))
     coordinator = iStoreOSDataUpdateCoordinator(hass, fetcher)
     await coordinator.async_config_entry_first_refresh()
 
@@ -43,7 +45,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        data = hass.data[DOMAIN].pop(entry.entry_id)
+        await data["fetcher"].close()
     return unload_ok
 
 class iStoreOSDataUpdateCoordinator(DataUpdateCoordinator):
@@ -57,5 +60,7 @@ class iStoreOSDataUpdateCoordinator(DataUpdateCoordinator):
             if not data:
                 raise UpdateFailed("Failed to fetch data from iStoreOS")
             return data
+        except AuthenticationError as error:
+            raise ConfigEntryAuthFailed(str(error)) from error
         except Exception as error:
             raise UpdateFailed(error) from error

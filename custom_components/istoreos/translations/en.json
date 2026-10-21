@@ -1,18 +1,60 @@
 {
   "entity": {
     "sensor": {
-      "load_1min": { "name": "CPU Load (1m)" },
-      "load_5min": { "name": "CPU Load (5m)" },
-      "load_15min": { "name": "CPU Load (15m)" },
-      "load_summary": { "name": "CPU Load Summary" },
-      "mem_used_percent": { "name": "Memory Usage" },
-      "mem_used_mb": { "name": "Memory Used" },
-      "mem_total_mb": { "name": "Memory Total" },
-      "mem_available_mb": { "name": "Memory Available" },
-      "mem_free_mb": { "name": "Memory Free" },
-      "mem_summary": { "name": "Memory Summary" },
-      "online_devices": { "name": "Online Devices" },
-      "uptime_human": { "name": "System Uptime" }
+      "load_1min": {
+        "name": "CPU Load (1m)"
+      },
+      "load_5min": {
+        "name": "CPU Load (5m)"
+      },
+      "load_15min": {
+        "name": "CPU Load (15m)"
+      },
+      "load_summary": {
+        "name": "CPU Load Summary"
+      },
+      "mem_used_percent": {
+        "name": "Memory Usage"
+      },
+      "mem_used_mb": {
+        "name": "Memory Used"
+      },
+      "mem_total_mb": {
+        "name": "Memory Total"
+      },
+      "mem_available_mb": {
+        "name": "Memory Available"
+      },
+      "mem_free_mb": {
+        "name": "Memory Free"
+      },
+      "mem_summary": {
+        "name": "Memory Summary"
+      },
+      "online_devices": {
+        "name": "Online Devices"
+      },
+      "uptime_human": {
+        "name": "System Uptime"
+      }
+    }
+  },
+  "config": {
+    "error": {
+      "invalid_auth": "Invalid username or password.",
+      "invalid_host": "Enter a hostname or http(s)://host[:port], without a LuCI path.",
+      "cannot_connect": "Cannot access the router ubus API. Check /ubus, uhttpd-mod-ubus, and RPC permissions."
+    },
+    "step": {
+      "user": {
+        "title": "Add iStoreOS Router",
+        "description": "Enter the router connection details.",
+        "data": {
+          "host": "Host",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
     }
   }
 }
